@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,7 +66,7 @@ public class ByteBufInputStreamTest {
 
         JSONReader reader = new JSONReader(new InputStreamReader(bbis, "utf-8"));
         List<User> users = new ArrayList<User>();
-        int readBytes=0;
+        int readBytes = 0;
         try {
             reader.startObject();
             User user = new User();
@@ -77,10 +78,12 @@ public class ByteBufInputStreamTest {
                     user.setName(reader.readString());
                 } else if (key.equals("age")) {
                     user.setAge(reader.readInteger());
+                    readBytes = bbis.getReadBytes();
                     reader.endObject();
+
                     users.add(user);
                     user = new User();
-                    readBytes = bbis.getReadBytes();
+
                     reader.startObject();
                 }
             }
@@ -90,12 +93,112 @@ public class ByteBufInputStreamTest {
             Assert.assertThat(readBytes, is(lessThan(data.length)));
             Assert.assertEquals(data.length, buf.readerIndex());
             Assert.assertEquals(data.length, buf.writerIndex());
-            buf.readerIndex(readBytes);
+            buf.readerIndex(readBytes - 2);
 
             byte[] left = new byte[1024];
             buf.readBytes(left, 0, buf.readableBytes());
             String leftStr = new String(left, "utf-8");
             System.out.println(leftStr);
         }
+    }
+
+    @Test
+    public void testScanJson() throws IOException {
+        ByteBufAllocator allocator = new PooledByteBufAllocator();
+        ByteBuf buf = allocator.buffer();
+        Assert.assertEquals(0, buf.readerIndex());
+        Assert.assertEquals(0, buf.writerIndex());
+        Assert.assertEquals(0, buf.readableBytes());
+
+        InputStream in = ByteBufInputStreamTest.class.getResourceAsStream("/stream.json");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        IOUtils.copy(in, baos);
+
+        buf.writeBytes(baos.toByteArray());
+        Assert.assertEquals(0, buf.readerIndex());
+
+        List<String> out = new ArrayList<String>();
+        JsonHelper.extractJsonBlocks(buf, out);
+
+        for (String str : out) {
+            System.out.println(str);
+        }
+
+
+        Assert.assertEquals(0, buf.readerIndex());
+        Assert.assertEquals(19, buf.writerIndex());
+        byte[] left = new byte[1024];
+        buf.readBytes(left, 0, buf.readableBytes());
+        String leftStr = new String(left, "utf-8");
+        System.out.println(leftStr);
+    }
+
+    @Test
+    public void testScanJson2() throws IOException {
+        ByteBufAllocator allocator = new PooledByteBufAllocator();
+        ByteBuf buf = allocator.buffer();
+
+        InputStream in = ByteBufInputStreamTest.class.getResourceAsStream("/stream2.json");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        IOUtils.copy(in, baos);
+
+        buf.writeBytes(baos.toByteArray());
+
+        List<String> out = new ArrayList<String>();
+        JsonHelper.extractJsonBlocks(buf, out);
+        Assert.assertEquals(1, out.size());
+
+        for (String str : out) {
+            System.out.println(str);
+        }
+
+        Assert.assertEquals(0, buf.readerIndex());
+        Assert.assertEquals(0, buf.writerIndex());
+    }
+
+    @Test
+    public void testScanJson3() throws IOException {
+        ByteBufAllocator allocator = new PooledByteBufAllocator();
+        ByteBuf buf = allocator.buffer();
+
+        InputStream in = ByteBufInputStreamTest.class.getResourceAsStream("/stream3.json");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        IOUtils.copy(in, baos);
+
+        buf.writeBytes(baos.toByteArray());
+
+        List<String> out = new ArrayList<String>();
+        JsonHelper.extractJsonBlocks(buf, out);
+        Assert.assertEquals(2, out.size());
+
+        for (String str : out) {
+            System.out.println(str);
+        }
+
+        Assert.assertEquals(0, buf.readerIndex());
+        Assert.assertEquals(0, buf.writerIndex());
+    }
+
+    @Test
+    public void testScanJson4() throws IOException {
+        ByteBufAllocator allocator = new PooledByteBufAllocator();
+        ByteBuf buf = allocator.buffer();
+
+        InputStream in = ByteBufInputStreamTest.class.getResourceAsStream("/stream4.json");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        IOUtils.copy(in, baos);
+
+        buf.writeBytes(baos.toByteArray());
+
+        List<String> out = new ArrayList<String>();
+        JsonHelper.extractJsonBlocks(buf, out);
+        Assert.assertEquals(0, out.size());
+
+        for (String str : out) {
+            System.out.println(str);
+        }
+
+        Assert.assertEquals(0, buf.readerIndex());
+        Assert.assertEquals(baos.toByteArray().length, buf.writerIndex());
     }
 }

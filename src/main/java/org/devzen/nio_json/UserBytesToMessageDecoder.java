@@ -12,6 +12,6 @@ import java.util.List;
 public class UserBytesToMessageDecoder extends ByteToMessageDecoder {
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
-
+          JsonHelper.extractJsonBlocks(in, out);
     }
 }
